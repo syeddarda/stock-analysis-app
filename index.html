@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Analyser — AI-Powered Insights</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo">
+          <span class="logo-icon">📈</span>
+          <span class="logo-text">StockLens</span>
+          <span class="logo-tag">AI-Powered Analysis</span>
+        </div>
+        <p class="header-sub">Enter any stock ticker to get real-time technical, fundamental, and AI-driven insights.</p>
+      </div>
+    </header>
+
+    <!-- Search -->
+    <section class="search-section">
+      <div class="search-box">
+        <input
+          id="ticker-input"
+          class="ticker-input"
+          type="text"
+          placeholder="e.g. AAPL, TSLA, NVDA, MSFT..."
+          maxlength="10"
+          autocomplete="off"
+          autocapitalize="characters"
+        />
+        <button id="analyse-btn" class="analyse-btn" onclick="runAnalysis()">
+          <span id="btn-text">Analyse</span>
+          <span id="btn-spinner" class="spinner hidden"></span>
+        </button>
+      </div>
+      <div class="quick-picks">
+        <span class="quick-label">Quick picks:</span>
+        <button class="quick-btn" onclick="quickPick('AAPL')">AAPL</button>
+        <button class="quick-btn" onclick="quickPick('NVDA')">NVDA</button>
+        <button class="quick-btn" onclick="quickPick('TSLA')">TSLA</button>
+        <button class="quick-btn" onclick="quickPick('MSFT')">MSFT</button>
+        <button class="quick-btn" onclick="quickPick('SPY')">SPY</button>
+      </div>
+      <div id="error-msg" class="error-msg hidden"></div>
+    </section>
+
+    <!-- Results (hidden until analysis runs) -->
+    <section id="results" class="results hidden">
+
+      <!-- Top Row: Verdict + Fundamentals -->
+      <div class="row row-top">
+
+        <!-- AI Verdict Card -->
+        <div class="card verdict-card" id="verdict-card">
+          <div class="card-header">
+            <span class="card-icon">🤖</span>
+            <span class="card-title">AI Verdict</span>
+          </div>
+          <div class="verdict-main">
+            <span id="verdict-badge" class="verdict-badge">—</span>
+            <span id="confidence-badge" class="confidence-badge">—</span>
+          </div>
+          <p id="verdict-summary" class="verdict-summary">—</p>
+          <p id="verdict-oneliner" class="verdict-oneliner">—</p>
+          <div class="usage-note" id="cache-note"></div>
+        </div>
+
+        <!-- Fundamentals Card -->
+        <div class="card fund-card">
+          <div class="card-header">
+            <span class="card-icon">🏢</span>
+            <span class="card-title" id="stock-name">Fundamentals</span>
+          </div>
+          <div class="fund-grid">
+            <div class="fund-item"><span class="fund-label">Price</span><span class="fund-val" id="f-price">—</span></div>
+            <div class="fund-item"><span class="fund-label">1W Change</span><span class="fund-val" id="f-1w">—</span></div>
+            <div class="fund-item"><span class="fund-label">1M Change</span><span class="fund-val" id="f-1m">—</span></div>
+            <div class="fund-item"><span class="fund-label">Market Cap</span><span class="fund-val" id="f-mcap">—</span></div>
+            <div class="fund-item"><span class="fund-label">P/E (TTM)</span><span class="fund-val" id="f-pe">—</span></div>
+            <div class="fund-item"><span class="fund-label">Fwd P/E</span><span class="fund-val" id="f-fpe">—</span></div>
+            <div class="fund-item"><span class="fund-label">EPS</span><span class="fund-val" id="f-eps">—</span></div>
+            <div class="fund-item"><span class="fund-label">Div Yield</span><span class="fund-val" id="f-div">—</span></div>
+            <div class="fund-item"><span class="fund-label">Beta</span><span class="fund-val" id="f-beta">—</span></div>
+            <div class="fund-item fund-wide"><span class="fund-label">52W Range</span><span class="fund-val" id="f-52w">—</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Chart -->
+      <div class="card chart-card">
+        <div class="card-header">
+          <span class="card-icon">📊</span>
+          <span class="card-title">Price Chart (90 days)</span>
+          <div class="chart-controls">
+            <button class="chart-btn active" onclick="toggleOverlay(this, 'sma20')">SMA 20</button>
+            <button class="chart-btn active" onclick="toggleOverlay(this, 'sma50')">SMA 50</button>
+            <button class="chart-btn" onclick="toggleOverlay(this, 'sma200')">SMA 200</button>
+            <button class="chart-btn" onclick="toggleOverlay(this, 'bb')">BB</button>
+          </div>
+        </div>
+        <div id="chart-container"></div>
+      </div>
+
+      <!-- Technical Indicators -->
+      <div class="row row-indicators">
+        <div class="card indicator-card">
+          <div class="card-header"><span class="card-icon">⚡</span><span class="card-title">RSI (14)</span></div>
+          <div class="indicator-val" id="rsi-val">—</div>
+          <div class="indicator-bar-wrap">
+            <div class="indicator-bar">
+              <div class="bar-zone bar-red" style="width:30%"></div>
+              <div class="bar-zone bar-green" style="width:40%"></div>
+              <div class="bar-zone bar-red" style="width:30%"></div>
+              <div id="rsi-marker" class="bar-marker" style="left:50%"></div>
+            </div>
+            <div class="bar-labels">
+              <span>0</span><span>30</span><span>70</span><span>100</span>
+            </div>
+          </div>
+          <p id="rsi-label" class="indicator-label">—</p>
+        </div>
+
+        <div class="card indicator-card">
+          <div class="card-header"><span class="card-icon">〰️</span><span class="card-title">MACD</span></div>
+          <div class="macd-row">
+            <div class="macd-item"><span class="macd-label">MACD</span><span class="macd-val" id="macd-line">—</span></div>
+            <div class="macd-item"><span class="macd-label">Signal</span><span class="macd-val" id="macd-signal">—</span></div>
+            <div class="macd-item"><span class="macd-label">Histogram</span><span class="macd-val" id="macd-hist">—</span></div>
+          </div>
+          <p id="macd-label" class="indicator-label">—</p>
+        </div>
+
+        <div class="card indicator-card">
+          <div class="card-header"><span class="card-icon">🎯</span><span class="card-title">Bollinger Bands</span></div>
+          <div class="bb-row">
+            <div class="bb-item"><span class="bb-label">Upper</span><span class="bb-val" id="bb-upper">—</span></div>
+            <div class="bb-item"><span class="bb-label">Mid (SMA20)</span><span class="bb-val" id="bb-mid">—</span></div>
+            <div class="bb-item"><span class="bb-label">Lower</span><span class="bb-val" id="bb-lower">—</span></div>
+          </div>
+          <p id="bb-label" class="indicator-label">—</p>
+        </div>
+
+        <div class="card indicator-card">
+          <div class="card-header"><span class="card-icon">📐</span><span class="card-title">Moving Averages</span></div>
+          <div class="ma-list">
+            <div class="ma-item"><span class="ma-label">SMA 20</span><span class="ma-val" id="sma20-val">—</span><span class="ma-rel" id="sma20-rel">—</span></div>
+            <div class="ma-item"><span class="ma-label">SMA 50</span><span class="ma-val" id="sma50-val">—</span><span class="ma-rel" id="sma50-rel">—</span></div>
+            <div class="ma-item"><span class="ma-label">SMA 200</span><span class="ma-val" id="sma200-val">—</span><span class="ma-rel" id="sma200-rel">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Analysis Detail -->
+      <div class="row row-ai">
+        <div class="card ai-detail-card">
+          <div class="card-header"><span class="card-icon">🧠</span><span class="card-title">Technical Analysis</span></div>
+          <div class="ai-trend"><span class="trend-label">Trend:</span><span id="ai-trend">—</span></div>
+          <div class="signal-list" id="ai-signals">—</div>
+          <div class="risk-section">
+            <span class="risk-label">Risk Factors</span>
+            <div class="risk-list" id="ai-risks">—</div>
+          </div>
+        </div>
+
+        <div class="card ai-detail-card">
+          <div class="card-header"><span class="card-icon">📋</span><span class="card-title">Fundamental Snapshot</span></div>
+          <p id="ai-fundamental" class="ai-text">—</p>
+          <div class="price-targets">
+            <div class="pt-item bull"><span class="pt-label">🟢 Bull Case</span><p id="pt-bull">—</p></div>
+            <div class="pt-item bear"><span class="pt-label">🔴 Bear Case</span><p id="pt-bear">—</p></div>
+          </div>
+        </div>
+
+        <div class="card ai-detail-card">
+          <div class="card-header"><span class="card-icon">🏛️</span><span class="card-title">Insider Activity</span></div>
+          <p id="ai-insider-signal" class="ai-text">—</p>
+          <div id="insider-table-wrap" class="insider-table-wrap"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+      <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Fetching market data & running AI analysis…</p>
+        <p class="loading-sub">This takes about 10–20 seconds</p>
+      </div>
+    </div>
+
+    <footer class="footer">
+      Built by <a href="https://github.com/syeddarda" target="_blank">Syed Darda</a> · AI analysis powered by Claude · Data via Yahoo Finance · For informational purposes only
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
